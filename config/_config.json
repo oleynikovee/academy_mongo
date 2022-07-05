@@ -10,7 +10,7 @@
     "debug": true
   },
   "local": {
-    "database": "mongodb://localhost:27017",
+    "database": "mongodb://localhost:27017/tc",
     "dbName": "tc",
     "seed": true,
     "dbConfig": {
