@@ -228,7 +228,7 @@ async function example14() {
   try {
     const result=await studentCollection.aggregate(
       [
-        {$match:{"scores":{$in:['homework']}}},
+        {$match:{"scores.type":'homework'}},
         {
           $group: { _id: "$name", avg: { $avg:"$scores.score"} }
         }
@@ -241,7 +241,7 @@ async function example14() {
 //- Delete all students that have homework score <= 60
 async function example15() {
   try {
-    const result=await studentCollection.deleteMany( {$and:[{"scores.type":"homework"},{"scores.score":{ $lte: 60 }}]});
+    const result=await studentCollection.deleteMany({'scores.type':"homework",'scores.score':{$lte:60}});
   } catch (err) {
     console.error(err)
   }
@@ -249,7 +249,7 @@ async function example15() {
 //- Mark students that have quiz score => 80
 async function example16() {
   try {
-    const result=await studentCollection.updateMany( {"scores":[{"type":"quiz","score":{$gte:80}}]},{$set:{"mark":"niceQuiz"}});
+    const result=await studentCollection.updateMany( {'scores.type':"quiz",'scores.score':{$gte:80}},{$set:{"mark":"niceQuiz"}});
   } catch (err) {
     console.error(err)
   }
@@ -262,23 +262,20 @@ async function example16() {
 */
 async function example17() {
   try {
-    const result=await studentCollection.aggregate(
-      [
-        {
-          $group: { _id: "$name", avg: { $avg:"$scores.score"} }
-        },
-        {
-          $cond:{if:{$and:[{$gte:["avg",0]},{$lte:["avg",40]}]},then:{$set:{"group":"a"}}}
-        },
-        {
-          $cond:{if:{$and:[{$gte:["avg",41]},{$lte:["avg",60]}]},then:{$set:{"group":"b"}}}
-        },
-        {
-          $cond:{if:{$and:[{$gte:["avg",61]},{$lte:["avg",100]}]},then:{$set:{"group":"c"}}}
-        }
-      ]
-    );
-    console.log("last:"+result);
+    const result= await studentCollection.aggregate([ 
+      { 
+         $project: 
+           { 
+             firstName : 1, 
+             salaryIsHighOrLow : 
+               { 
+                  $cond : {  if : { $gte: [{$avg:'scores.score'}, 0],$lte:[{$avg:'scores.score'}, 40]}, then: "a"}, 
+                  $cond:{if:{$gte:['$total',41],$lte:['$total',60]}},then:{$set:{"group":"b"}},
+                  $cond:{if:{$gte:['$total',0],$lte:['$total',40]}},then:{$set:{"group":"c"}}
+               } 
+           } 
+      } 
+   ]);
   } catch (err) {
     console.error(err)
   }
