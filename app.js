@@ -267,11 +267,11 @@ async function example17() {
          $project: 
            { 
              firstName : 1, 
-             salaryIsHighOrLow : 
+             group : 
                { 
                   $cond : {  if : { $gte: [{$avg:'scores.score'}, 0],$lte:[{$avg:'scores.score'}, 40]}, then: "a"}, 
-                  $cond:{if:{$gte:['$total',41],$lte:['$total',60]}},then:{$set:{"group":"b"}},
-                  $cond:{if:{$gte:['$total',0],$lte:['$total',40]}},then:{$set:{"group":"c"}}
+                  $cond:{if : { $gte: [{$avg:'scores.score'}, 41],$lte:[{$avg:'scores.score'}, 60]},then:"b"},
+                  $cond:{if : { $gte: [{$avg:'scores.score'}, 61],$lte:[{$avg:'scores.score'}, 100]},then:"c"}
                } 
            } 
       } 
