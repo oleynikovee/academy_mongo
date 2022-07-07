@@ -188,7 +188,7 @@ async function example10() {
 //- Find all students who have the worst score for homework, sort by descent
 async function example11() {
   try {
-    const result=await studentCollection.find({'scores':{$elemMatch:{'score':'homework'}}}).sort({'scores.score':-1});
+    const result=await studentCollection.find({'scores':{$elemMatch:{'type':'homework'}}}).sort({'scores.score':-1});
   } catch (err) {
     console.error(err)
   }
@@ -196,7 +196,21 @@ async function example11() {
 //-- Find all students who have the best score for quiz and the worst for homework, sort by ascending
 async function example12() {
   try {
-    const result=await studentCollection.find({'scores':{$elemMatch:{'score':{$in:['homework','quiz']}}}}).sort({$and:[{"scores.type":"homework","scores.score":-1},{"scores.type":"quiz","scores.score":1}]});
+    const result=await studentCollection.aggregate(
+      [        {
+        $match:{
+          'scores':{$elemMatch:{'type':['quiz','homework']}}
+        }
+      },
+        { $group : 
+          {
+             _id:$_id,
+             quiz:{$first:'$scores.score'},
+             homework:{$last:'$scores.score'}
+            }},
+        {$sort:{$first:{'$scores.score':-1}}}
+      ]
+    );
   } catch (err) {
     console.error(err)
   }
@@ -206,9 +220,18 @@ async function example13() {
   try {
     const result=await studentCollection.aggregate(
       [
-        { $unwind: "$scores" },
-        { $group : { _id: {"$scores.type":{$in:['quiz','exam']}}}},
-        {$sort:{'$scores.score':1}}
+        {
+          $match:{
+            'scores':{$elemMatch:{'type':['exam','quiz']}}
+          }
+        },
+        { $group : 
+          {
+             _id:'$_id',
+             exam:{$first:'$scores.score'},
+             quiz:{$last:'$scores.score'}
+            }},
+        {$sort:{$last:{'$scores.score':-1}}}
       ]
     );
   } catch (err) {
@@ -220,8 +243,7 @@ async function example14() {
   try {
     const result=await studentCollection.aggregate(
       [
-        { $unwind: "$scores" },
-        { $group : { _id: {"$scores.type":'homework'}, avgScore : {  $avg : "$scores.score" }}}
+        { $group : { _id:'$_id',name:'$name', avgScore : {  $avg : {$last:"$scores.score"}}}}
       ]
     );
   } catch (err) {
@@ -253,9 +275,8 @@ async function example16() {
 async function example17() {
   try {
     const result=await studentCollection.aggregate(
-      [
-        { $unwind: "$scores" },
-        { $group : { _id: "$scores.type", avgScore : {  $avg : "$scores.score" }}},
+      [ 
+        { $group : { _id:'$_id',type:{$elemMatch:"$scores.type"}, avgScore : {  $avg :{$elemMatch:"$scores.score"}}}},
         {
           $cond : {  if : { $gte: ['avgScore', 0],$lte:['avgScore', 40]}, then: {$set:{'group':'a'}}}, 
           $cond:{if : { $gte: ['avgScore', 41],$lte:['avgScore', 60]},then:{$set:{'group':'b'}}},
