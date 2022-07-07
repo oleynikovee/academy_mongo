@@ -188,13 +188,7 @@ async function example10() {
 //- Find all students who have the worst score for homework, sort by descent
 async function example11() {
   try {
-    const result=await studentCollection.aggregate(
-      [
-        {$match:{"scores":{"type":{$in:['homework']}}}},
-        {$group:{"_id":"$name","_score":"$scores.score"}},
-        {$sort:{"_score":-1}}
-      ]
-    );
+    const result=await studentCollection.find({'scores':{$elemMatch:{'score':'homework'}}}).sort({'scores.score':-1});
   } catch (err) {
     console.error(err)
   }
@@ -202,11 +196,7 @@ async function example11() {
 //-- Find all students who have the best score for quiz and the worst for homework, sort by ascending
 async function example12() {
   try {
-    const result=await studentCollection.aggregate(
-      [
-        {$sort:{$and:[{"scores.type":"homework"},{"scores.score":-1}],$and:[{"scores.type":"quiz"},{"scores.score":1}]}}
-      ]
-    );
+    const result=await studentCollection.find({'scores':{$elemMatch:{'score':{$in:['homework','quiz']}}}}).sort({$and:[{"scores.type":"homework","scores.score":-1},{"scores.type":"quiz","scores.score":1}]});
   } catch (err) {
     console.error(err)
   }
@@ -216,7 +206,9 @@ async function example13() {
   try {
     const result=await studentCollection.aggregate(
       [
-        {$sort:{$and:[{"scores.type":"quiz"},{"scores.score":1}],$and:[{"scores.type":"exam"},{"scores.score":1}]}}
+        { $unwind: "$scores" },
+        { $group : { _id: {"$scores.type":{$in:['quiz','exam']}}}},
+        {$sort:{'$scores.score':1}}
       ]
     );
   } catch (err) {
@@ -228,10 +220,8 @@ async function example14() {
   try {
     const result=await studentCollection.aggregate(
       [
-        {$match:{"scores.type":'homework'}},
-        {
-          $group: { _id: "$name", avg: { $avg:"$scores.score"} }
-        }
+        { $unwind: "$scores" },
+        { $group : { _id: {"$scores.type":'homework'}, avgScore : {  $avg : "$scores.score" }}}
       ]
     );
   } catch (err) {
@@ -241,7 +231,8 @@ async function example14() {
 //- Delete all students that have homework score <= 60
 async function example15() {
   try {
-    const result=await studentCollection.deleteMany({'scores.type':"homework",'scores.score':{$lte:60}});
+    //const result=await studentCollection.deleteMany({'scores.type':"homework",'scores.score':{$lte:60}});
+    const result=await studentCollection.deleteMany({'scores':{$elemMatch:{'type':'homework','score':{$lte:60}}}});
   } catch (err) {
     console.error(err)
   }
@@ -249,7 +240,7 @@ async function example15() {
 //- Mark students that have quiz score => 80
 async function example16() {
   try {
-    const result=await studentCollection.updateMany( {'scores.type':"quiz",'scores.score':{$gte:80}},{$set:{"mark":"niceQuiz"}});
+    const result=await studentCollection.updateMany( {'scores':{$elemMatch:{'type':'quiz','score':{$gte:80}}}},{$set:{"mark":"niceQuiz"}});
   } catch (err) {
     console.error(err)
   }
@@ -262,20 +253,18 @@ async function example16() {
 */
 async function example17() {
   try {
-    const result= await studentCollection.aggregate([ 
-      { 
-         $project: 
-           { 
-             firstName : 1, 
-             group : 
-               { 
-                  $cond : {  if : { $gte: [{$avg:'scores.score'}, 0],$lte:[{$avg:'scores.score'}, 40]}, then: "a"}, 
-                  $cond:{if : { $gte: [{$avg:'scores.score'}, 41],$lte:[{$avg:'scores.score'}, 60]},then:"b"},
-                  $cond:{if : { $gte: [{$avg:'scores.score'}, 61],$lte:[{$avg:'scores.score'}, 100]},then:"c"}
-               } 
-           } 
-      } 
-   ]);
+    const result=await studentCollection.aggregate(
+      [
+        { $unwind: "$scores" },
+        { $group : { _id: "$scores.type", avgScore : {  $avg : "$scores.score" }}},
+        {
+          $cond : {  if : { $gte: ['avgScore', 0],$lte:['avgScore', 40]}, then: {$set:{'group':'a'}}}, 
+          $cond:{if : { $gte: ['avgScore', 41],$lte:['avgScore', 60]},then:{$set:{'group':'b'}}},
+          $cond:{if : { $gte: ['avgScore', 61],$lte:['avgScore', 100]},then:{$set:{'group':'c'}}}
+        }
+      ]
+    );
+    console.log(result);
   } catch (err) {
     console.error(err)
   }
