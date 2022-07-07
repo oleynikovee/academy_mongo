@@ -231,7 +231,6 @@ async function example14() {
 //- Delete all students that have homework score <= 60
 async function example15() {
   try {
-    //const result=await studentCollection.deleteMany({'scores.type':"homework",'scores.score':{$lte:60}});
     const result=await studentCollection.deleteMany({'scores':{$elemMatch:{'type':'homework','score':{$lte:60}}}});
   } catch (err) {
     console.error(err)
