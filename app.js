@@ -276,7 +276,8 @@ async function example17() {
   try {
     const result=await studentCollection.aggregate(
       [ 
-        { $group : { _id:'$_id',type:{$elemMatch:"$scores.type"}, avgScore : {  $avg :{$elemMatch:"$scores.score"}}}},
+        {$unwind:'$scores'},
+        { $group : { _id:'$_id', avgScore : {  $avg :{$elemMatch:"$scores.score"}}}},
         {
           $cond : {  if : { $gte: ['avgScore', 0],$lte:['avgScore', 40]}, then: {$set:{'group':'a'}}}, 
           $cond:{if : { $gte: ['avgScore', 41],$lte:['avgScore', 60]},then:{$set:{'group':'b'}}},
